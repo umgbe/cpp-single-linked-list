@@ -5,6 +5,8 @@
 #include <string>
 #include <utility>
 
+#include <vector>
+
 template <typename Type>
 class SingleLinkedList {
     // Узел списка
@@ -127,6 +129,7 @@ public:
         // Возвращает ссылку на самого себя
         // Инкремент итератора, не указывающего на существующий элемент списка, приводит к неопределённому поведению
         BasicIterator& operator++() noexcept {
+            assert(node_ != nullptr);
             node_ = node_->next_node;
             return *this;
         }
@@ -145,6 +148,7 @@ public:
         // Вызов этого оператора у итератора, не указывающего на существующий элемент списка,
         // приводит к неопределённому поведению
         [[nodiscard]] reference operator*() const noexcept {
+            assert(node_ != nullptr);
             return node_->value;
         }
 
@@ -152,6 +156,7 @@ public:
         // Вызов этого оператора у итератора, не указывающего на существующий элемент списка,
         // приводит к неопределённому поведению
         [[nodiscard]] pointer operator->() const noexcept {
+            assert(node_ != nullptr);
             return &node_->value;
         }
 
@@ -201,15 +206,13 @@ public:
     // Возвращает константный итератор, ссылающийся на первый элемент
     // Если список пустой, возвращённый итератор будет равен cend()
     [[nodiscard]] ConstIterator cbegin() const noexcept {
-        ConstIterator result(head_.next_node);
-        return result;
+        return begin();
     }
 
     // Возвращает константный итератор, указывающий на позицию, следующую за последним элементом односвязного списка
     // Разыменовывать этот итератор нельзя — попытка разыменования приведёт к неопределённому поведению
     [[nodiscard]] ConstIterator cend() const noexcept {
-        ConstIterator result(nullptr);
-        return result;
+        return end();
     }
 
     // Обменивает содержимое списков за время O(1)
@@ -220,35 +223,18 @@ public:
 
     SingleLinkedList(std::initializer_list<Type> values)
     : head_(), size_(0) {
-        SingleLinkedList tmp;
-        for (auto it = rbegin(values); it != rend(values); ++it) {
-            tmp.PushFront(*it);
-        }
+        SingleLinkedList tmp = ConstructListFromAnyContainer(values);
         swap(tmp);
     }
 
     SingleLinkedList(const SingleLinkedList& other)
     : head_(), size_(0) {
-        SingleLinkedList tmp_reversed;
-        for (Type value : other) {
-            tmp_reversed.PushFront(value);
-        }
-        SingleLinkedList tmp;
-        for (Type value : tmp_reversed) {
-            tmp.PushFront(value);
-        }
+        SingleLinkedList tmp = ConstructListFromAnyContainer(other);
         swap(tmp);
     }
 
     SingleLinkedList& operator=(const SingleLinkedList& rhs) {
-        SingleLinkedList tmp_reversed;
-        for (Type value : rhs) {
-            tmp_reversed.PushFront(value);
-        }
-        SingleLinkedList tmp;
-        for (Type value : tmp_reversed) {
-            tmp.PushFront(value);
-        }
+        SingleLinkedList tmp(rhs);
         swap(tmp);
         return *this;
     }
@@ -278,6 +264,7 @@ public:
      * Если при создании элемента будет выброшено исключение, список останется в прежнем состоянии
      */
     Iterator InsertAfter(ConstIterator pos, const Type& value) {
+        assert(pos.node_ != nullptr);
         Node* new_node = new Node(value, pos.node_->next_node);
         pos.node_->next_node = new_node;
         Iterator result(new_node);
@@ -286,6 +273,9 @@ public:
     }
 
     void PopFront() noexcept {
+        if (size_ == 0) {
+            return;
+        }
         Node* node_to_delete = head_.next_node;
         head_.next_node = node_to_delete->next_node;
         delete(node_to_delete);
@@ -297,6 +287,8 @@ public:
      * Возвращает итератор на элемент, следующий за удалённым
      */
     Iterator EraseAfter(ConstIterator pos) noexcept {
+        assert(pos.node_ != nullptr);
+        assert(pos.node_->next_node != nullptr);
         Node* node_to_delete = pos.node_->next_node;
         pos.node_->next_node = node_to_delete->next_node;
         Iterator result(node_to_delete->next_node);
@@ -309,6 +301,16 @@ private:
     // Фиктивный узел, используется для вставки "перед первым элементом"
     Node head_;
     size_t size_;
+
+    template <typename Container>
+    SingleLinkedList ConstructListFromAnyContainer(const Container& c) const {
+        SingleLinkedList result;
+        auto it = result.before_begin();
+        for (Type value : c) {
+            it = result.InsertAfter(it, value);
+        }
+        return result;
+    }
 };
 
 template <typename Type>
