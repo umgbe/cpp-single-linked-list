@@ -5,8 +5,6 @@
 #include <string>
 #include <utility>
 
-#include <vector>
-
 template <typename Type>
 class SingleLinkedList {
     // Узел списка
